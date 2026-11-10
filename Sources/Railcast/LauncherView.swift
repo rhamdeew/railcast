@@ -51,7 +51,7 @@ struct LauncherView: View {
 
     private var fieldPlaceholder: String {
         switch model.mode {
-        case .home: "Search functions"
+        case .home: "Search functions and apps"
         case .emoji: "Search emoji and symbols"
         case .translate: "Text to translate"
         }
@@ -96,42 +96,59 @@ private struct CommandList: View {
     let model: LauncherModel
 
     var body: some View {
-        let commands = model.visibleCommands
-        VStack(alignment: .leading, spacing: 2) {
-            if commands.isEmpty {
-                Text("No matching functions")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                Text("Functions")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 4)
-                ForEach(Array(commands.enumerated()), id: \.element.id) { index, command in
-                    row(command, isSelected: index == model.selectedCommandIndex)
+        if model.homeItems.isEmpty {
+            Text("No matching functions or apps")
+                .foregroundStyle(.secondary)
+        } else {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 2) {
+                        ForEach(model.homeItems.indices, id: \.self) { index in
+                            if let title = sectionTitle(at: index) {
+                                sectionHeader(title)
+                            }
+                            row(model.homeItems[index], isSelected: index == model.selectedCommandIndex)
+                                .id(index)
+                        }
+                    }
+                    .padding(10)
                 }
-                Spacer(minLength: 0)
+                .onChange(of: model.selectedCommandIndex) { _, index in proxy.scrollTo(index) }
+                .onChange(of: model.query) { proxy.scrollTo(0, anchor: .top) }
             }
         }
-        .padding(10)
     }
 
-    private func row(_ command: LauncherCommand, isSelected: Bool) -> some View {
+    private func sectionTitle(at index: Int) -> String? {
+        let items = model.homeItems
+        switch items[index] {
+        case .command:
+            return index == 0 ? "Functions" : nil
+        case .app:
+            if index > 0, case .app = items[index - 1] { return nil }
+            return "Apps"
+        }
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.top, 4)
+            .padding(.bottom, 4)
+    }
+
+    private func row(_ item: HomeItem, isSelected: Bool) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: command.symbolName)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(command.kind == .emoji ? Color.orange : Color.blue)
-                )
-            Text(command.title)
+            icon(for: item)
+            Text(title(of: item))
                 .font(.system(size: 15))
-            Text(command.subtitle)
+                .lineLimit(1)
+            Text(subtitle(of: item))
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
             Spacer()
         }
         .padding(.horizontal, 10)
@@ -141,7 +158,53 @@ private struct CommandList: View {
                 .fill(isSelected ? Color.accentColor.opacity(0.35) : .clear)
         )
         .contentShape(Rectangle())
-        .onTapGesture { model.open(command) }
+        .onTapGesture { model.activate(item) }
+    }
+
+    private func title(of item: HomeItem) -> String {
+        switch item {
+        case .command(let command): command.title
+        case .app(let app): app.name
+        }
+    }
+
+    private func subtitle(of item: HomeItem) -> String {
+        switch item {
+        case .command(let command): command.subtitle
+        case .app: "Application"
+        }
+    }
+
+    @ViewBuilder
+    private func icon(for item: HomeItem) -> some View {
+        switch item {
+        case .command(let command):
+            Image(systemName: command.symbolName)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(command.kind == .emoji ? Color.orange : Color.blue)
+                )
+        case .app(let app):
+            Image(nsImage: AppIcons.icon(forPath: app.path))
+                .resizable()
+                .frame(width: 28, height: 28)
+        }
+    }
+}
+
+/// Moving the selection redraws every visible row, so icons are loaded once.
+@MainActor
+private enum AppIcons {
+    private static var cache: [String: NSImage] = [:]
+
+    static func icon(forPath path: String) -> NSImage {
+        if let cached = cache[path] { return cached }
+        let icon = NSWorkspace.shared.icon(forFile: path)
+        cache[path] = icon
+        return icon
     }
 }
 

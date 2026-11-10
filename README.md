@@ -1,6 +1,8 @@
+<p align="center"><img src="Resources/AppIcon.png" width="128" alt="Railcast"></p>
+
 # Railcast
 
-A minimal macOS launcher with two functions: emoji and symbol search, and Google Translate.
+A minimal macOS launcher: quick app launch, emoji and symbol search, and Google Translate.
 
 Requires macOS 14 or later.
 
@@ -20,7 +22,7 @@ Press `⌥Space` to open Railcast. Option-Space must not be taken by another app
 
 | Key | Action |
 |---|---|
-| `↑` `↓` `↵` | Choose and open a function |
+| `↑` `↓` `↵` | Choose and open a function or app |
 | `⇥` | Switch between emoji and translate |
 | `↵` | Paste the emoji, or copy the translation |
 | `⌘↵` | Copy the emoji, or paste the translation |

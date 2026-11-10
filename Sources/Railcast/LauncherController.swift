@@ -58,6 +58,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
 
         model.onDismiss = { [weak self] in self?.hide() }
         model.onOutput = { [weak self] text, action in self?.deliver(text, action) }
+        model.onOpenApp = { [weak self] app in self?.launch(app) }
     }
 
     func toggle() {
@@ -111,6 +112,18 @@ final class LauncherController: NSObject, NSWindowDelegate {
             x: area.midX - Self.size.width / 2,
             y: area.minY + (area.height - Self.size.height) * 0.65
         ))
+    }
+
+    private func launch(_ app: InstalledApp) {
+        hide()
+        NSWorkspace.shared.openApplication(
+            at: URL(fileURLWithPath: app.path),
+            configuration: NSWorkspace.OpenConfiguration()
+        ) { _, error in
+            if let error {
+                NSLog("Railcast: could not open %@: %@", app.name, error.localizedDescription)
+            }
+        }
     }
 
     private func deliver(_ text: String, _ action: OutputAction) {

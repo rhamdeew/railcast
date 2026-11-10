@@ -29,6 +29,18 @@ enum LauncherKey {
     }
 }
 
+enum HomeItem: Identifiable {
+    case command(LauncherCommand)
+    case app(InstalledApp)
+
+    var id: String {
+        switch self {
+        case .command(let command): "command:\(command.id)"
+        case .app(let app): "app:\(app.id)"
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class LauncherModel {
@@ -53,7 +65,7 @@ final class LauncherModel {
             guard query != oldValue else { return }
             targetOverride = nil
             switch mode {
-            case .home: selectedCommandIndex = 0
+            case .home: refreshHome()
             case .emoji: refreshNow()
             case .translate: scheduler.edit(query, target: targetLanguage)
             }
@@ -63,26 +75,27 @@ final class LauncherModel {
     private(set) var results: [EmojiEntry] = []
     private(set) var selectedIndex = 0
     private(set) var selectedCommandIndex = 0
+    private(set) var homeItems: [HomeItem] = []
     private(set) var focusRequest = 0
 
     @ObservationIgnored var onDismiss: () -> Void = {}
     @ObservationIgnored var onOutput: (String, OutputAction) -> Void = { _, _ in }
+    @ObservationIgnored var onOpenApp: (InstalledApp) -> Void = { _ in }
 
     private let catalog: EmojiCatalog
     private let translator: any Translator
     private let scheduler: TranslationScheduler
     private let languages = LanguagePair.englishRussian
     private var targetOverride: String?
+    @ObservationIgnored private var apps: [InstalledApp] = []
 
     init(catalog: EmojiCatalog, translator: any Translator) {
         self.catalog = catalog
         self.translator = translator
         scheduler = TranslationScheduler(translator: translator)
         results = catalog.browse(recents: recents)
-    }
-
-    var visibleCommands: [LauncherCommand] {
-        LauncherCommand.matching(query)
+        refreshHome()
+        reloadApps()
     }
 
     var translation: TranslationState {
@@ -103,6 +116,7 @@ final class LauncherModel {
 
     func prepareForShow() {
         focusRequest += 1
+        reloadApps()
         warmUpIfTranslating()
     }
 
@@ -150,6 +164,13 @@ final class LauncherModel {
         }
     }
 
+    func activate(_ item: HomeItem) {
+        switch item {
+        case .command(let command): open(command)
+        case .app(let app): onOpenApp(app)
+        }
+    }
+
     func choose(index: Int) {
         selectedIndex = index
         confirm(command: false)
@@ -165,7 +186,7 @@ final class LauncherModel {
 
     private func moveRow(by rows: Int) -> Bool {
         guard mode == .home else { return moveSelection(by: rows * Self.gridColumns) }
-        let lastIndex = visibleCommands.count - 1
+        let lastIndex = homeItems.count - 1
         guard lastIndex >= 0 else { return true }
         selectedCommandIndex = min(max(selectedCommandIndex + rows, 0), lastIndex)
         return true
@@ -174,9 +195,8 @@ final class LauncherModel {
     private func confirm(command: Bool) {
         switch mode {
         case .home:
-            let commands = visibleCommands
-            guard commands.indices.contains(selectedCommandIndex) else { return }
-            open(commands[selectedCommandIndex])
+            guard homeItems.indices.contains(selectedCommandIndex) else { return }
+            activate(homeItems[selectedCommandIndex])
         case .emoji:
             guard let entry = selectedEntry else { return }
             remember(entry)
@@ -195,13 +215,31 @@ final class LauncherModel {
         switch mode {
         case .home:
             scheduler.cancel()
-            selectedCommandIndex = 0
+            refreshHome()
         case .emoji:
             scheduler.cancel()
             selectedIndex = 0
             results = query.isEmpty ? catalog.browse(recents: recents) : catalog.search(query)
         case .translate:
             scheduler.translateNow(query, target: targetLanguage)
+        }
+    }
+
+    private func refreshHome() {
+        selectedCommandIndex = 0
+        homeItems = LauncherCommand.matching(query).map(HomeItem.command)
+            + AppSearch.search(apps, query: query).map(HomeItem.app)
+    }
+
+    /// Runs on every open, so newly installed apps appear without restarting Railcast.
+    private func reloadApps() {
+        Task { [weak self] in
+            let scanned = await Task.detached { AppScanner.scan() }.value
+            guard let self, scanned != apps else { return }
+            apps = scanned
+            if mode == .home {
+                refreshHome()
+            }
         }
     }
 

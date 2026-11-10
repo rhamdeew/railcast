@@ -4,6 +4,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-10
+
+### Added
+
+- App icon and menu bar icon based on the Railcast logo.
+- Search installed apps from the home screen and launch them.
+
 ## [0.2.0] - 2026-11-10
 
 ### Added

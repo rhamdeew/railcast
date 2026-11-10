@@ -50,7 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeStatusItem() -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "command", accessibilityDescription: "Railcast")
+        item.button?.image = Self.menuBarImage()
 
         let menu = NSMenu()
         menu.addItem(withTitle: "Open Railcast (⌥Space)", action: #selector(openLauncher), keyEquivalent: "").target = self
@@ -58,6 +58,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Quit Railcast", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         item.menu = menu
         return item
+    }
+
+    private static func menuBarImage() -> NSImage? {
+        guard let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
+              let image = NSImage(contentsOf: url)
+        else { return NSImage(systemSymbolName: "command", accessibilityDescription: "Railcast") }
+        image.size = NSSize(width: 18, height: 18)
+        image.isTemplate = true
+        image.accessibilityDescription = "Railcast"
+        return image
     }
 
     @objc private func openLauncher() {
