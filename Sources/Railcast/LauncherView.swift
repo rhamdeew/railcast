@@ -123,7 +123,9 @@ private struct CommandList: View {
         let items = model.homeItems
         switch items[index] {
         case .command:
-            return index == 0 ? "Functions" : nil
+            if index == 0 { return "Functions" }
+            if case .app = items[index - 1] { return "Railcast" }
+            return nil
         case .app:
             if index > 0, case .app = items[index - 1] { return nil }
             return "Apps"
@@ -161,6 +163,14 @@ private struct CommandList: View {
         .onTapGesture { model.activate(item) }
     }
 
+    private func tint(of command: LauncherCommand) -> Color {
+        switch command.kind {
+        case .emoji: .orange
+        case .translate: .blue
+        case .toggleMenuBarIcon, .quit: .gray
+        }
+    }
+
     private func title(of item: HomeItem) -> String {
         switch item {
         case .command(let command): command.title
@@ -185,7 +195,7 @@ private struct CommandList: View {
                 .frame(width: 28, height: 28)
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(command.kind == .emoji ? Color.orange : Color.blue)
+                        .fill(tint(of: command))
                 )
         case .app(let app):
             Image(nsImage: AppIcons.icon(forPath: app.path))

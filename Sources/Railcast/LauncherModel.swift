@@ -51,6 +51,7 @@ final class LauncherModel {
     static let gridColumns = 9
     private static let maxRecents = gridColumns * 2
     private static let recentsKey = "recentEmoji"
+    private static let hideMenuBarIconKey = "hideMenuBarIcon"
 
     var mode = Mode.home {
         didSet {
@@ -74,6 +75,15 @@ final class LauncherModel {
 
     private(set) var results: [EmojiEntry] = []
     private(set) var selectedIndex = 0
+    var isMenuBarIconHidden = false {
+        didSet {
+            guard isMenuBarIconHidden != oldValue else { return }
+            UserDefaults.standard.set(isMenuBarIconHidden, forKey: Self.hideMenuBarIconKey)
+            onMenuBarIconChange(isMenuBarIconHidden)
+            refreshHome()
+        }
+    }
+
     private(set) var selectedCommandIndex = 0
     private(set) var homeItems: [HomeItem] = []
     private(set) var focusRequest = 0
@@ -81,6 +91,7 @@ final class LauncherModel {
     @ObservationIgnored var onDismiss: () -> Void = {}
     @ObservationIgnored var onOutput: (String, OutputAction) -> Void = { _, _ in }
     @ObservationIgnored var onOpenApp: (InstalledApp) -> Void = { _ in }
+    @ObservationIgnored var onMenuBarIconChange: (Bool) -> Void = { _ in }
 
     private let catalog: EmojiCatalog
     private let translator: any Translator
@@ -94,6 +105,7 @@ final class LauncherModel {
         self.translator = translator
         scheduler = TranslationScheduler(translator: translator)
         results = catalog.browse(recents: recents)
+        isMenuBarIconHidden = UserDefaults.standard.bool(forKey: Self.hideMenuBarIconKey)
         refreshHome()
         reloadApps()
     }
@@ -126,10 +138,18 @@ final class LauncherModel {
     }
 
     func open(_ command: LauncherCommand) {
-        query = ""
         switch command.kind {
-        case .emoji: mode = .emoji
-        case .translate: mode = .translate
+        case .emoji:
+            query = ""
+            mode = .emoji
+        case .translate:
+            query = ""
+            mode = .translate
+        case .toggleMenuBarIcon:
+            isMenuBarIconHidden.toggle()
+            onDismiss()
+        case .quit:
+            NSApp.terminate(nil)
         }
     }
 
@@ -227,8 +247,10 @@ final class LauncherModel {
 
     private func refreshHome() {
         selectedCommandIndex = 0
-        homeItems = LauncherCommand.matching(query).map(HomeItem.command)
+        let commands = LauncherCommand.matching(query, menuBarIconHidden: isMenuBarIconHidden)
+        homeItems = commands.filter { !$0.isSearchOnly }.map(HomeItem.command)
             + AppSearch.search(apps, query: query).map(HomeItem.app)
+            + commands.filter(\.isSearchOnly).map(HomeItem.command)
     }
 
     /// Runs on every open, so newly installed apps appear without restarting Railcast.

@@ -26,8 +26,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.launcher = launcher
 
         registerHotKey()
-        statusItem = makeStatusItem()
+        launcher.onMenuBarIconChange = { [weak self] isHidden in
+            self?.updateStatusItem(isHidden: isHidden)
+        }
+        updateStatusItem(isHidden: launcher.isMenuBarIconHidden)
         launcher.applyLaunchArguments(CommandLine.arguments)
+    }
+
+    /// Opening Railcast.app again shows the panel, which also works while the icon is hidden.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        launcher?.show()
+        return false
+    }
+
+    private func updateStatusItem(isHidden: Bool) {
+        if isHidden {
+            if let statusItem {
+                NSStatusBar.system.removeStatusItem(statusItem)
+            }
+            statusItem = nil
+        } else if statusItem == nil {
+            statusItem = makeStatusItem()
+        }
     }
 
     /// Retries while another app holds the shortcut, so quitting that app is enough to free it.
@@ -54,6 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(withTitle: "Open Railcast (⌥Space)", action: #selector(openLauncher), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Hide Menu Bar Icon", action: #selector(hideMenuBarIcon), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Railcast", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         item.menu = menu
@@ -68,6 +89,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         image.isTemplate = true
         image.accessibilityDescription = "Railcast"
         return image
+    }
+
+    @objc private func hideMenuBarIcon() {
+        launcher?.isMenuBarIconHidden = true
     }
 
     @objc private func openLauncher() {

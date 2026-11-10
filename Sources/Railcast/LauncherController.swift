@@ -61,6 +61,16 @@ final class LauncherController: NSObject, NSWindowDelegate {
         model.onOpenApp = { [weak self] app in self?.launch(app) }
     }
 
+    var isMenuBarIconHidden: Bool {
+        get { model.isMenuBarIconHidden }
+        set { model.isMenuBarIconHidden = newValue }
+    }
+
+    var onMenuBarIconChange: (Bool) -> Void {
+        get { model.onMenuBarIconChange }
+        set { model.onMenuBarIconChange = newValue }
+    }
+
     func toggle() {
         panel.isVisible ? hide() : show()
     }

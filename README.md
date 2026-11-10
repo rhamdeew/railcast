@@ -29,6 +29,8 @@ Press `⌥Space` to open Railcast. Option-Space must not be taken by another app
 | `⌘L` | Swap the translation direction |
 | `esc` | Go back, then close |
 
+To hide the menu bar icon, use its menu or search for `hide` in Railcast. While it is hidden, the start screen has a row to show it again, and search for `quit` closes the app.
+
 Translation uses Google's free, unofficial endpoint, which needs no API key but has no guarantees.
 
 ## Build

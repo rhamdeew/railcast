@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-10
+
+### Added
+
+- Option to hide the menu bar icon, and a Quit Railcast entry in search.
+
 ## [0.3.0] - 2026-11-10
 
 ### Added
