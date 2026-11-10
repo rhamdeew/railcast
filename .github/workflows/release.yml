@@ -1,0 +1,51 @@
+# Publishes a GitHub release with a DMG for every pushed version tag (vX.Y.Z).
+# Tests are not repeated here: they run before tagging, and their timing checks suit a local machine.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      # The toolchain the project is developed and tested with.
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version and extract release notes
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          code_version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)
+          if [ "$version" != "$code_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Info.plist version ($code_version)"
+            exit 1
+          fi
+          awk -v heading="## [$version]" '
+            index($0, heading) == 1 { found = 1; next }
+            /^## \[/ { found = 0 }
+            found
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no entries for $version"
+            exit 1
+          fi
+
+      - name: Build the DMG
+        run: Scripts/build-dmg.sh dist
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*.dmg \
+            --verify-tag \
+            --title "Railcast ${GITHUB_REF_NAME#v}" \
+            --notes-file "$RUNNER_TEMP/notes.md"
