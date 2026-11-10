@@ -6,6 +6,16 @@ A minimal macOS launcher: quick app launch, emoji and symbol search, and Google 
 
 Requires macOS 14 or later.
 
+<p align="center"><img src="docs/screenshots/main.png" width="640" alt="Railcast main window with Search Emoji & Symbols and Google Translate"></p>
+
+### Emoji and symbol search
+
+<p align="center"><img src="docs/screenshots/emoji.png" width="640" alt="Emoji search results for the word heart"></p>
+
+### Google Translate
+
+<p align="center"><img src="docs/screenshots/translate.png" width="640" alt="An English sentence translated into Russian"></p>
+
 ## Install
 
 Download the DMG from Releases and drag Railcast to Applications. The app is not notarized, so remove the quarantine flag before the first launch:
