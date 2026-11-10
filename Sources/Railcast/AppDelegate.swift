@@ -18,7 +18,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fatalError("emoji.json is missing or invalid. Run Scripts/build-app.sh and launch the .app.")
         }
 
-        let launcher = LauncherController(catalog: catalog)
+        let start = ContinuousClock.now
+        let systemKeywords = SystemEmojiKeywords.load(language: "ru")
+        NSLog("Railcast: loaded system keywords for %d emoji in %@", systemKeywords.count, "\(ContinuousClock.now - start)")
+
+        let launcher = LauncherController(catalog: catalog.addingKeywords(systemKeywords))
         self.launcher = launcher
 
         registerHotKey()

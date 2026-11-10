@@ -19,7 +19,33 @@ public struct EmojiCatalog: Sendable {
         let k: [String]
     }
 
-    public let entries: [EmojiEntry]
+    public private(set) var entries: [EmojiEntry]
+
+    /// Returns a catalog with more search words, keyed by emoji. Unknown emoji are ignored.
+    public func addingKeywords(_ extra: [String: [String]]) -> EmojiCatalog {
+        var byKey: [String: [String]] = [:]
+        for (character, terms) in extra {
+            byKey[Self.withoutVariationSelector(character), default: []] += terms
+        }
+
+        var catalog = self
+        catalog.entries = entries.map { entry in
+            guard let terms = byKey[Self.withoutVariationSelector(entry.character)] else { return entry }
+            return EmojiEntry(
+                character: entry.character,
+                name: entry.name,
+                localizedName: entry.localizedName,
+                searchNames: entry.searchNames,
+                nameWords: entry.nameWords,
+                keywords: Array(Set(entry.keywords + terms.map(Self.normalize)))
+            )
+        }
+        return catalog
+    }
+
+    private static func withoutVariationSelector(_ text: String) -> String {
+        text.replacingOccurrences(of: "\u{FE0F}", with: "")
+    }
 
     public init(json: Data) throws {
         entries = try JSONDecoder().decode([Record].self, from: json).map { record in

@@ -52,11 +52,48 @@ final class EmojiCatalogTests: XCTestCase {
         XCTAssertEqual(characters, ["→", "🦔", "😀", "🙂"])
     }
 
-    func testBundledDataLoadsAndFindsCommonEntries() throws {
+    func testAddedKeywordsAreSearchableAndIgnoreVariationSelectors() throws {
+        let catalog = try catalog().addingKeywords([
+            "😀": ["Лыба"],
+            "→\u{FE0F}": ["туда"],
+            "🦄": ["неизвестно"],
+        ])
+
+        XCTAssertEqual(catalog.search("лыба").map(\.character), ["😀"])
+        XCTAssertEqual(catalog.search("туда").map(\.character), ["→"])
+        XCTAssertEqual(catalog.search("неизвестно").map(\.character), [])
+        XCTAssertEqual(catalog.search("счастье").map(\.character), ["😀"])
+    }
+
+    func testSystemKeywordsFindRussianSlang() throws {
+        let keywords = SystemEmojiKeywords.load(language: "ru")
+        try XCTSkipIf(keywords.isEmpty, "This macOS has no Russian emoji index")
+
+        let catalog = try bundledCatalog().addingKeywords(keywords)
+        let results = catalog.search("хз").map(\.character)
+        XCTAssertEqual(Set(results.prefix(3)), ["🤷", "🤷‍♂️", "🤷‍♀️"])
+        XCTAssertTrue(catalog.search("ржу").contains { $0.character == "😂" })
+
+        let start = ContinuousClock.now
+        for query in ["хз", "кот", "огонь", "smile", "ф"] {
+            _ = catalog.search(query)
+        }
+        XCTAssertLessThan(ContinuousClock.now - start, .milliseconds(250))
+    }
+
+    func testLanguageWithoutSystemIndexIsEmpty() {
+        XCTAssertEqual(SystemEmojiKeywords.load(language: "no-such-language").count, 0)
+    }
+
+    private func bundledCatalog() throws -> EmojiCatalog {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Resources/emoji.json")
-        let catalog = try EmojiCatalog(json: Data(contentsOf: url))
+        return try EmojiCatalog(json: Data(contentsOf: url))
+    }
+
+    func testBundledDataLoadsAndFindsCommonEntries() throws {
+        let catalog = try bundledCatalog()
 
         XCTAssertGreaterThan(catalog.entries.count, 2000)
         XCTAssertEqual(Set(catalog.entries.map(\.character)).count, catalog.entries.count)
