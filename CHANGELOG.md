@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-26
+
+### Fixed
+
+- Crash after opening an app from the launcher on macOS 27, which made Option-Space stop working.
+
 ## [0.4.0] - 2026-11-10
 
 ### Added

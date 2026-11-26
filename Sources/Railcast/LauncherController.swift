@@ -126,12 +126,14 @@ final class LauncherController: NSObject, NSWindowDelegate {
 
     private func launch(_ app: InstalledApp) {
         hide()
+        let name = app.name
+        // LaunchServices calls this on a background queue; a main-actor closure would trap there.
         NSWorkspace.shared.openApplication(
             at: URL(fileURLWithPath: app.path),
             configuration: NSWorkspace.OpenConfiguration()
-        ) { _, error in
+        ) { @Sendable _, error in
             if let error {
-                NSLog("Railcast: could not open %@: %@", app.name, error.localizedDescription)
+                NSLog("Railcast: could not open %@: %@", name, error.localizedDescription)
             }
         }
     }
